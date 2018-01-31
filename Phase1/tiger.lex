@@ -61,14 +61,16 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <INITIAL>[0-9]+ => (Tokens.INT (valOf (Int.fromString yytext), yypos,yypos + size yytext));
 <INITIAL>[a-zA-Z]([a-zA-Z]|[0-9]|"_") => (Tokens.ID (yytext, yypos, yypos + size yytext));
 
-<INITIAL>"\"" =>(YYBEGIN STRING; currentString :=""; stringStartPos := yypos;continue());
-<STRING>"\\\"" => (appendS "\\\""; continue());
-<STRING>"\"" => (YYBEGIN INITIAL;Tokens.STRING(!currentString, !stringStartPos, yypos + 1));
-<STRING>. => (appendS yytext; continue());
+<INITIAL>"\""	=> (YYBEGIN STRING; currentString :=""; stringStartPos := yypos;continue());
+<STRING>"\\"	=> (appendS yytext; YYBEGIN ESCAPE; continue());
+<STRING>"\""	=> (YYBEGIN INITIAL; Tokens.STRING(!currentString, !stringStartPos, yypos + 1));
+<STRING>. 	=> (appendS yytext; continue());
+<ESCAPE>.	=> (appendS yytext; YYBEGIN STRING; continue());
 
-<INITIAL>"/*"   => (YYBEGIN COMMENT; continue())
-<COMMENT>"*/"   =>  (YYBEGIN INITIAL; continue ())
-<COMMENT>.      => (continue ());
+
+<INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
+<COMMENT>"*/"   => (YYBEGIN INITIAL; continue());
+<COMMENT>.      => (continue());
 
 
 .       => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
