@@ -1,0 +1,11 @@
+/* this is a comment /* second level comment */ */
+fun insert (Leaf, key, value) = Tree (Leaf, key, value, Leaf)
+  | insert (Tree (left, treeKey, treeValue, right), key, value) =
+      let 
+      var string = "test ddd \041 and test control \^22"
+      in
+      if key = treeKey
+      then Tree (left, treeKey, value, right)
+      else if key < treeKey
+      then Tree (insert (left, key, value), treeKey, treeValue, right)
+      else Tree (left, treeKey, treeValue, insert (right, key, value))
