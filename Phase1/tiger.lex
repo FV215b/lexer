@@ -10,6 +10,10 @@ val stringStartPos = ref 0
 fun appendS s = currentString := !currentString ^ s
 fun nextLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
 
+fun dddToString (s,yypos) = if valOf(Int.fromString s) <= 255 
+				then appendS (String.str (chr (valOf (Int.fromString s)))) 
+				else let ErrorMsg.error yypos "\\ddd should be less than 255" in appendS ""
+
 fun eof () = 
 let 
   val pos = hd(!linePos) 
@@ -76,6 +80,9 @@ end
 <ESCAPE>[" "\t\f]	=> (YYBEGIN DOUBLE_ESCAPE; continue());
 <ESCAPE>n	=> (appendS "\n"; YYBEGIN STRING; continue());
 <ESCAPE>t	=> (appendS "\t"; YYBEGIN STRING; continue());
+
+<ESCAPE>[0-9]{,3} => (dddToString(yytext,yypos); YYBEGIN STRING; continue());
+
 <ESCAPE>^	=> (YYBEGIN CONTROL; continue());
 <ESCAPE>.	=> (ErrorMsg.error yypos ("illegal escape character " ^ yytext); continue());
 <DOUBLE_ESCAPE>"\\"	=> (YYBEGIN STRING; continue());
@@ -87,7 +94,6 @@ end
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
 <COMMENT>"*/"   => (YYBEGIN INITIAL; continue());
 <COMMENT>.      => (continue());
-
 
 .       => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
 
