@@ -3,19 +3,31 @@ type lexresult = Tokens.token
 
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
+val commentDepth = ref 0
 
 val currentString = ref ""
 val stringStartPos = ref 0
 fun appendS s = currentString := !currentString ^ s
 fun newLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
 
-fun dddToString (s,yypos) = if valOf(Int.fromString s) <= 255 andalso valOf(Int.fromString s) >= 0 
-				then appendS (String.str (chr (valOf (Int.fromString s)))) 
-				else let ErrorMsg.error yypos "\\ddd should beetween 255 and 0 in string" in appendS ""
+fun dddToString (s,yypos) = 
+let 
+  val value = valOf(Int.fromString s)
+in
+if value <= 255 andalso value >= 0 
+	then appendS (String.str (chr (value))) 
+	else ErrorMsg.error yypos ("ddd should beetween 255 and 0 in string")
+end
 
-fun controlToString (s,yypos) = if valOf(Int.fromString S) <= 95 andalso valOf(Int.fromString s) > =64 
-				then appendS (String.str (chr (ord (String.sub(s, 0)) - 64)) else 
-				let ErrorMsg.error yypos "\\\^c should be between 64 and 95 in string" in appendS ""
+fun controlToString (s,yypos) =
+let
+  val value = ord (String.sub(s, 0))
+in 
+if value <= 95 andalso value >= 64 
+	then appendS (String.str (chr (value - 64))) 
+	else ErrorMsg.error yypos ("control should be between 64 and 95 in string")
+end
+
 fun eof () = 
 let 
   val pos = hd(!linePos) 
@@ -23,7 +35,9 @@ in
   Tokens.EOF(pos,pos) 
 end
 
-%% 
+%%
+
+%s STRING ESCAPE DOUBLE_ESCAPE COMMENT CONTROL; 
 %%
 
 <INITIAL>\n	=> (newLine yypos; continue());
@@ -84,16 +98,15 @@ end
 <ESCAPE>n	=> (appendS "\n"; YYBEGIN STRING; continue());
 <ESCAPE>t	=> (appendS "\t"; YYBEGIN STRING; continue());
 
-<ESCAPE>[0-9]{,3} => (dddToString (yytext,yypos); YYBEGIN STRING; continue());
+<ESCAPE>[0-9]{3} => (dddToString (yytext, yypos); YYBEGIN STRING; continue());
 
-<ESCAPE>^	=> (YYBEGIN CONTROL; continue());
+<ESCAPE>"^"	=> (YYBEGIN CONTROL; continue());
 <ESCAPE>.	=> (ErrorMsg.error yypos ("illegal escape character " ^ yytext); continue());
 <DOUBLE_ESCAPE>"\\"	=> (YYBEGIN STRING; continue());
 <DOUBLE_ESCAPE>\n	=> (newLine yypos; continue());
 <DOUBLE_ESCAPE>[" "\t\f]	=> (continue());
 <DOUBLE_ESCAPE>.	=> (ErrorMsg.error yypos ("illegal double escape character " ^ yytext); continue());
-<CONTROL>.	=> (controlToString (yytext,yypos);
-                        YYBEGIN STRING; continue ());
+<CONTROL>.	=> (controlToString (yytext,yypos); YYBEGIN STRING; continue ());
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
 <COMMENT>"/*"   => (commentDepth := !commentDepth + 1; continue ());
