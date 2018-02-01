@@ -84,7 +84,7 @@ end
 <ESCAPE>n	=> (appendS "\n"; YYBEGIN STRING; continue());
 <ESCAPE>t	=> (appendS "\t"; YYBEGIN STRING; continue());
 
-<ESCAPE>[0-9]{,3} => (dddToString(yytext,yypos); YYBEGIN STRING; continue());
+<ESCAPE>[0-9]{,3} => (dddToString (yytext,yypos); YYBEGIN STRING; continue());
 
 <ESCAPE>^	=> (YYBEGIN CONTROL; continue());
 <ESCAPE>.	=> (ErrorMsg.error yypos ("illegal escape character " ^ yytext); continue());
@@ -92,7 +92,7 @@ end
 <DOUBLE_ESCAPE>\n	=> (newLine yypos; continue());
 <DOUBLE_ESCAPE>[" "\t\f]	=> (continue());
 <DOUBLE_ESCAPE>.	=> (ErrorMsg.error yypos ("illegal double escape character " ^ yytext); continue());
-<CONTROL>.	=> (appendS (String.str (chr (ord (String.sub(yytext, 0)) - 64)));
+<CONTROL>.	=> (controlToString (yytext,yypos);
                         YYBEGIN STRING; continue ());
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
