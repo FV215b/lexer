@@ -3,7 +3,6 @@ type lexresult = Tokens.token
 
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
-fun err(p1,p2) = ErrorMsg.error p1
 
 val currentString = ref ""
 val stringStartPos = ref 0
@@ -19,6 +18,7 @@ end
 
 %% 
 %%
+
 <INITIAL>\n	=> (nextLine yypos; continue());
 <INITIAL>[" "|\t|\r]	=> (continue());
 
@@ -67,10 +67,10 @@ end
 <INITIAL>[0-9]+	=> (Tokens.INT (valOf (Int.fromString yytext), yypos,yypos + size yytext));
 <INITIAL>[a-zA-Z]([a-zA-Z]|[0-9]|"_")	=> (Tokens.ID (yytext, yypos, yypos + size yytext));
 
-<INITIAL>"\""	=> (YYBEGIN STRING; currentString :=""; stringStartPos := yypos;continue());
+<INITIAL>"\""	=> (YYBEGIN STRING; currentString :=""; stringStartPos := yypos; continue());
 <STRING>"\\"	=> (YYBEGIN ESCAPE; continue());
 <STRING>"\""	=> (YYBEGIN INITIAL; Tokens.STRING(!currentString, !stringStartPos, yypos + 1));
-<STRING>\n	=> (ErrorMsg.error yypos ("illegal newline character in string" ^ yytext); continue());
+<STRING>\n	=> (ErrorMsg.error yypos ("illegal newline character " ^ yytext); continue());
 <STRING>. 	=> (appendS yytext; continue());
 <ESCAPE>\n	=> (nextLine yypos; YYBEGIN DOUBLE_ESCAPE; continue());
 <ESCAPE>[" "\t\f]	=> (YYBEGIN DOUBLE_ESCAPE; continue());
@@ -82,7 +82,8 @@ end
 <DOUBLE_ESCAPE>\n	=> (nextLine yypos; continue());
 <DOUBLE_ESCAPE>[" "\t\f]	=> (continue());
 <DOUBLE_ESCAPE>.	=> (ErrorMsg.error yypos ("illegal double escape character " ^ yytext); continue());
-<CONTROL>.	=>
+<CONTROL>.	=> (appendS (String.str (chr (ord (String.sub(yytext, 0)) - 64)));
+                        YYBEGIN STRING; continue ());
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
 <COMMENT>"*/"   => (YYBEGIN INITIAL; continue());
