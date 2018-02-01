@@ -9,10 +9,13 @@ val stringStartPos = ref 0
 fun appendS s = currentString := !currentString ^ s
 fun newLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
 
-fun dddToString (s,yypos) = if valOf(Int.fromString s) <= 255 
+fun dddToString (s,yypos) = if valOf(Int.fromString s) <= 255 andalso valOf(Int.fromString s) >= 0 
 				then appendS (String.str (chr (valOf (Int.fromString s)))) 
-				else let ErrorMsg.error yypos "\\ddd should be less than 255" in appendS ""
+				else let ErrorMsg.error yypos "\\ddd should beetween 255 and 0 in string" in appendS ""
 
+fun controlToString (s,yypos) = if valOf(Int.fromString S) <= 95 andalso valOf(Int.fromString s) > =64 
+				then appendS (String.str (chr (ord (String.sub(s, 0)) - 64)) else 
+				let ErrorMsg.error yypos "\\\^c should be between 64 and 95 in string" in appendS ""
 fun eof () = 
 let 
   val pos = hd(!linePos) 
