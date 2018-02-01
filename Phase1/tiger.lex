@@ -8,17 +8,23 @@ fun err(p1,p2) = ErrorMsg.error p1
 val currentString = ref ""
 val stringStartPos = ref 0
 fun appendS s = currentString := !currentString ^ s
+fun nextLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
 
-fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
-
+fun eof () = 
+let 
+  val pos = hd(!linePos) 
+in 
+  Tokens.EOF(pos,pos) 
+end
 
 %% 
 %%
-<INITIAL>(\n|" "|\t|\r) => (continue());
+<INITIAL>\n	=> (nextLine yypos; continue());
+<INITIAL>[" "|\t|\r]	=> (continue());
 
 <INITIAL>type   => (Tokens.TYPE (yypos, yypos + 4));
 <INITIAL>var  	=> (Tokens.VAR  (yypos, yypos + 3));
-<INITIAL>function   => (Tokens.FUNCTION (yypos, yypos + 8));
+<INITIAL>function	=> (Tokens.FUNCTION (yypos, yypos + 8));
 <INITIAL>break  => (Tokens.BREAK (yypos, yypos + 5));
 <INITIAL>of     => (Tokens.OF   (yypos, yypos + 2));
 <INITIAL>end    => (Tokens.END  (yypos, yypos + 3));
@@ -58,15 +64,25 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <INITIAL>":"    => (Tokens.COLON (yypos, yypos + 1));
 <INITIAL>","	=> (Tokens.COMMA (yypos, yypos + 1));
 
-<INITIAL>[0-9]+ => (Tokens.INT (valOf (Int.fromString yytext), yypos,yypos + size yytext));
-<INITIAL>[a-zA-Z]([a-zA-Z]|[0-9]|"_") => (Tokens.ID (yytext, yypos, yypos + size yytext));
+<INITIAL>[0-9]+	=> (Tokens.INT (valOf (Int.fromString yytext), yypos,yypos + size yytext));
+<INITIAL>[a-zA-Z]([a-zA-Z]|[0-9]|"_")	=> (Tokens.ID (yytext, yypos, yypos + size yytext));
 
 <INITIAL>"\""	=> (YYBEGIN STRING; currentString :=""; stringStartPos := yypos;continue());
-<STRING>"\\"	=> (appendS yytext; YYBEGIN ESCAPE; continue());
+<STRING>"\\"	=> (YYBEGIN ESCAPE; continue());
 <STRING>"\""	=> (YYBEGIN INITIAL; Tokens.STRING(!currentString, !stringStartPos, yypos + 1));
+<STRING>\n	=> (ErrorMsg.error yypos ("illegal newline character in string" ^ yytext); continue());
 <STRING>. 	=> (appendS yytext; continue());
-<ESCAPE>.	=> (appendS yytext; YYBEGIN STRING; continue());
-
+<ESCAPE>\n	=> (nextLine yypos; YYBEGIN DOUBLE_ESCAPE; continue());
+<ESCAPE>[" "\t\f]	=> (YYBEGIN DOUBLE_ESCAPE; continue());
+<ESCAPE>n	=> (appendS "\n"; YYBEGIN STRING; continue());
+<ESCAPE>t	=> (appendS "\t"; YYBEGIN STRING; continue());
+<ESCAPE>^	=> (YYBEGIN CONTROL; continue());
+<ESCAPE>.	=> (ErrorMsg.error yypos ("illegal escape character " ^ yytext); continue());
+<DOUBLE_ESCAPE>"\\"	=> (YYBEGIN STRING; continue());
+<DOUBLE_ESCAPE>\n	=> (nextLine yypos; continue());
+<DOUBLE_ESCAPE>[" "\t\f]	=> (continue());
+<DOUBLE_ESCAPE>.	=> (ErrorMsg.error yypos ("illegal double escape character " ^ yytext); continue());
+<CONTROL>.	=>
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
 <COMMENT>"*/"   => (YYBEGIN INITIAL; continue());
