@@ -8,7 +8,7 @@ fun err(p1,p2) = ErrorMsg.error p1
 val currentString = ref ""
 val stringStartPos = ref 0
 fun appendS s = currentString := !currentString ^ s
-fun nextLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
+fun newLine pos = (lineNum := !lineNum + 1; linePos := pos :: !linePos)
 
 fun dddToString (s,yypos) = if valOf(Int.fromString s) <= 255 
 				then appendS (String.str (chr (valOf (Int.fromString s)))) 
@@ -23,7 +23,7 @@ end
 
 %% 
 %%
-<INITIAL>\n	=> (nextLine yypos; continue());
+<INITIAL>\n	=> (newLine yypos; continue());
 <INITIAL>[" "|\t|\r]	=> (continue());
 
 <INITIAL>type   => (Tokens.TYPE (yypos, yypos + 4));
@@ -76,7 +76,7 @@ end
 <STRING>"\""	=> (YYBEGIN INITIAL; Tokens.STRING(!currentString, !stringStartPos, yypos + 1));
 <STRING>\n	=> (ErrorMsg.error yypos ("illegal newline character in string" ^ yytext); continue());
 <STRING>. 	=> (appendS yytext; continue());
-<ESCAPE>\n	=> (nextLine yypos; YYBEGIN DOUBLE_ESCAPE; continue());
+<ESCAPE>\n	=> (newLine yypos; YYBEGIN DOUBLE_ESCAPE; continue());
 <ESCAPE>[" "\t\f]	=> (YYBEGIN DOUBLE_ESCAPE; continue());
 <ESCAPE>n	=> (appendS "\n"; YYBEGIN STRING; continue());
 <ESCAPE>t	=> (appendS "\t"; YYBEGIN STRING; continue());
@@ -86,14 +86,15 @@ end
 <ESCAPE>^	=> (YYBEGIN CONTROL; continue());
 <ESCAPE>.	=> (ErrorMsg.error yypos ("illegal escape character " ^ yytext); continue());
 <DOUBLE_ESCAPE>"\\"	=> (YYBEGIN STRING; continue());
-<DOUBLE_ESCAPE>\n	=> (nextLine yypos; continue());
+<DOUBLE_ESCAPE>\n	=> (newLine yypos; continue());
 <DOUBLE_ESCAPE>[" "\t\f]	=> (continue());
 <DOUBLE_ESCAPE>.	=> (ErrorMsg.error yypos ("illegal double escape character " ^ yytext); continue());
 <CONTROL>.	=>
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; continue());
-<COMMENT>"*/"   => (YYBEGIN INITIAL; continue());
-<COMMENT>.      => (continue());
-
+<COMMENT>"/*"   => (commentDepth := !commentDepth + 1; continue ());
+<COMMENT>"*/"   => (commentDepth := !commentDepth - 1; if !commentDepth = 0 then YYBEGIN INITIAL else (); continue ());
+<COMMENT>\n     => (newLine (yypos); continue ());
+<COMMENT>.      => (continue ());
 .       => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
 
